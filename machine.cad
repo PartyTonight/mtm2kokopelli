@@ -1,0 +1,314 @@
+from koko.lib.shapes import *
+from math import asin,degrees,cos
+
+################
+# set parameters
+################
+
+bit=0.125 # Set this to the diameter of your bit
+material_thickness=.5 # Set this to the material thickness
+rod38dia=.375 # Set the diameter to cut for the 3/8 rod
+rod12dia=.5 # Set the diameter to cut for the 1/2 rod
+clearance=bit+.005 # Allow .05 for vibration
+
+####################
+# machine dimensions
+####################
+
+"""
+X axis is the left-right movement
+Y axis is the front-back movement
+Z axis is the spindle vertical movement
+Those are measured from exterior to exterior sides
+"""
+# adjust those
+bed_w=6.
+bed_h=4.
+bed_t=2.
+# do not modify below
+machineX=bed_w+4
+machineY=bed_h+6
+machineZ=8.5
+
+#############################################################
+
+
+#
+# CUSTOM SHAPE SELF ALIGNING ROD
+#
+def rod_align(x,y,rod_dia=.5,angle=0,long=True):
+    r1=rod_dia/2
+    r2=r1+.1
+    r3=r2+.13
+    r4=clearance/2
+    c1=circle(0,0,r1)
+    c2=circle(0,0,r2)
+    c3=circle(0,0,r3)
+    c4=circle(0,0,r4)
+    # rod   
+    rod=c1
+    # outer ring
+    outer=c3-c2
+    centralrec=rectangle(-r3,r3,-.136/2,.136/2)
+    outer-=centralrec
+    # bar
+    bar=move(c4,r3,0)
+    alpha=math.asin((.136/2+.13/2)/r3)
+    bar=rotate(bar,degrees(alpha))
+    bar+=rectangle(0,r3*cos(alpha),.136/2,.136/2+.13)
+    bar+=reflect_x(bar)
+    bar+=reflect_y(bar)
+    bar-=c2
+    # rod_align
+    if long==True:
+     rod_align=rod+outer+bar
+    else: rod_align=rod+outer
+    rod_align=rotate(rod_align,angle)
+    rod_align=move(rod_align,x,y)
+    return rod_align
+#
+# CUSTOM SHAPE NEMA 17 MOUNT IN INCHES
+#
+def nema17 (x0,y0,angle=0):
+ c1=circle (0,0,12/25.4)
+ c17=circle(15.5/25.4,15.5/25.4,1.5/25.4)
+ c17=c17+reflect_x(c17) 
+ c17=c17+reflect_y(c17)
+ c23=circle(23.57/25.4,23.57/25.4,2.5/25.4)
+ c23=c23+reflect_x(c23) 
+ c23=c23+reflect_y(c23)
+ m=c1+c17
+ m=rotate(m,angle)
+ m=move(m,x0,y0)
+ m.shape=True
+ return m
+
+###################
+# MTM Snap male tab
+###################
+'''
+Based on the snap.dxf file from http://mtm.cba.mit.edu/machines/mtm_snap-lock/index.html
+Ported to kokopelli by Francisco. Fab Academy 2013
+all units in incles, angles in degrees
+'''
+
+def tri_rect(x0,y0,length,height):  # Define a triangle rectangle
+   if length>0 and height>0:
+    tri=triangle(0,0,-length,0,0,height)
+    tri=reflect_x(tri)
+    tri=move(tri,x0,y0)
+    return tri
+   elif length<0 and height<0:
+    tri=triangle(0,0,-length,0,0,height)
+    tri=reflect_x(tri)
+    tri=move(tri,x0,y0)
+   else:
+    tri=triangle(0,0,length,0,0,height)
+    tri=move(tri,x0,y0)
+   return tri
+
+def rect(x0,y0,width,height):   #Easier for imput than the standard rectangle
+   r=rectangle(0,width,0,height)
+   r=move(r,x0,y0)
+   return r
+
+def tip(x0,y0):   # the weird shape of the tab tip
+   r1=rect(0,0,0.29,0.05)
+   r2=rect(0,0.05,0.29+0.06,0.0375)
+   t1=tri_rect(0.29,0.05,0.06,-0.05)
+   c1=circle(0.0625,0.05+0.0375,0.0625)
+   r3=rect(0.0625,0.05+0.0375,0.1458,0.0625)
+   r4=rect(0.2083,0.0875,0.1417,0.0301)
+   t2=tri_rect(0.1458+0.0625,0.05+0.0375+0.0301,0.1417,0.0313)
+   r=r1+r2+t1+c1+r3+r4+t2
+   r=move(r,x0,y0)
+   return r
+
+def tab_male(part,x0,y0,central_width=0.5,angle=0):
+    if central_width<0.2: central_width=0.2    # minimum tab width
+    # side tab with the long hole inside
+    r1=rect(0,0,0.29,1.75*material_thickness)
+    tp=tip(0,1.75*material_thickness-0.05)
+    r2=rect(0.08,.13/2,0.13,1.75*0.65*material_thickness-.13/2)
+    cirbit1=circle(.08+.13/2,1.75*0.65*material_thickness,.13/2)
+    cirbit2=circle(.08+.13/2,.13/2,.13/2)
+    cirbit3=circle(-.13/2,.13/2,.13/2)
+    cirbit4=circle(.29+.13/2,.13/2,.13/2)
+    rec3=rect(-.13,0,.13,.13/2)
+    rec4=rect(.29,0,.13,.13/2)
+    tab=r1+tp-r2-cirbit1-cirbit2+rec3-cirbit3+rec4-cirbit4   
+    tab=move(tab,0.26+central_width/2,0)
+    # middle center tab
+    r3=rect(0,0,.13+central_width/2,material_thickness*0.75)
+    r4=rect(0,0,central_width/2,1.75*material_thickness+0.1)
+    t1=tri_rect(central_width/2,1.75*material_thickness+0.1,-0.0625,-0.0625)
+    c1=circle(0.0442+central_width/2,0.0442+0.75*material_thickness,0.0625)
+    tab=tab+r3+r4-t1-c1
+    tab+=reflect_x(tab)
+    tab=move(tab,0,-.75*material_thickness)
+    tab=rotate(tab,angle)
+    tab=move(tab,x0,y0) # moves the tab to the perimeter point
+    # cut a rectangle slot in the destination part
+    r5=rectangle(0,central_width/2+0.68,0,0.75*material_thickness)
+    r5+=reflect_x(r5)
+    r5=move(r5,0,-.75*material_thickness)
+    r5=rotate(r5,angle)
+    r5=move(r5,x0,y0)
+    part=part-r5
+    # add the tab in the destination part
+    part=part+tab
+    return part
+
+def dogboned_rectangle(width,height,r):
+    rect = rectangle(-.5*width,.5*width,-.5*height,.5*height)
+    db = circle(.5*width-.70711*r,.5*height-.70711*r,r)  # 0.70711 is sqrt(2)/2
+    db += reflect_x(db)
+    db += reflect_y(db)
+    return rect+db
+
+def tab_female (x0,y0,central_width, angle=0):
+    if central_width<0.2: central_width=0.2    # minimum tab width
+    central=dogboned_rectangle(central_width,material_thickness,0.5*bit)
+    sides= dogboned_rectangle(.4,material_thickness,0.5*bit)
+    sides=move(sides,.5*central_width+.33,0)
+    sides += reflect_x(sides)
+    tab_female=central+sides
+    tab_female=rotate(tab_female,angle)
+    tab_female=move(tab_female,x0,y0)
+    return tab_female
+
+# draw rods holes
+support3= rectangle(-.8,.8,-0.7,1.8)
+c=rod_align(0,0,rod38dia,45,False)
+d=rod_align(0,1,rod12dia,0,True)
+rods=support3-c-d
+
+#######################
+# BED
+#######################
+#bed top
+bed_tabwtop=.2
+bed_tabwside=.7
+rod_distance=.37*bed_w
+bed_top=rectangle(0,bed_w,0,bed_h)
+bed_top=tab_male(bed_top,bed_w,bed_h/2.,bed_tabwside,-90) #right
+bed_top=tab_male(bed_top,0,bed_h/2.,bed_tabwside,90) #left
+bed_top=tab_male(bed_top,bed_w/3.,bed_h,bed_tabwtop,0) #topleft
+bed_top=tab_male(bed_top,2*bed_w/3.,bed_h,bed_tabwtop,0) #topright
+bed_top=tab_male(bed_top,bed_w/3.,0,bed_tabwtop,180) #bottomleft
+bed_top=tab_male(bed_top,2*bed_w/3.,0,bed_tabwtop,180) #bottomright
+bed_top=move(bed_top,-bed_w/2.,-bed_h/2.)
+
+#bed right part
+bed_right=rectangle(0,bed_t,0,bed_h)
+bed_right=tab_male(bed_right,bed_t/2.,bed_h,bed_tabwtop,0) #top
+bed_right=tab_male(bed_right,bed_t/2.,0,bed_tabwtop,180) #bottom
+bed_right-=tab_female(material_thickness,bed_h/2.,bed_tabwside,90)
+bed_right=move(bed_right,bed_w/2.+.9,-bed_h/2.)
+
+#bed left part
+bed_left=reflect_x(bed_right)
+
+#bed top part
+bed_sidetop=rectangle(0,(bed_w+3*material_thickness)/2,0,bed_t)
+bed_sidetop-=tab_female(-2*material_thickness+bed_w/3.,material_thickness,bed_tabwtop,0) #topleft
+bed_sidetop-=tab_female(bed_w/2+material_thickness/2,bed_t/2.,bed_tabwtop,90) #left
+
+bed_sidetop-=rod_align(rod_distance,2*bed_t/3.,rod12dia,90,True) #left rod
+
+bed_sidetop+=reflect_x(bed_sidetop)
+bed_sidetop=move(bed_sidetop,0,bed_h/2.+.9)
+
+
+#bed bottom part
+bed_sidebottom=reflect_y(bed_sidetop)
+
+fullbed=bed_sidetop+bed_sidebottom+bed_left+bed_right+bed_top
+fullbed=move(fullbed,machineX+4,machineY+2)
+
+
+################
+# machine bottom
+################
+r1=rounded_rectangle(0,machineX+2.5-material_thickness,0,machineY+2.5-material_thickness,.2)
+r1=move(r1,-(machineX+2.5-material_thickness)/2,-(machineY+2.5-material_thickness)/2)
+r2=rounded_rectangle(0,machineX-2-material_thickness,0,machineY-2-material_thickness,.2)
+r2=move(r2,-(machineX-2-material_thickness)/2,-(machineY-2-material_thickness)/2)
+mbottom=r1-r2
+mbottom_tabx=tab_female((machineX-material_thickness)/2,0,0.7,90)
+mbottom_tabx+=reflect_x(mbottom_tabx)
+mbottom-=mbottom_tabx
+
+mbottom_taby=tab_female(rod_distance,(machineY-material_thickness)/2,0.85,0)
+mbottom_taby+=reflect_x(mbottom_taby)
+mbottom_taby+=reflect_y(mbottom_taby)
+mbottom-=mbottom_taby
+
+###############
+# machine front
+###############
+mfront=rounded_rectangle(0,machineX+1,0,machineZ,.2)
+mfront+=rectangle(0,machineX+1,0,.2*machineZ)
+mfront=move(mfront,-(machineX+1)/2,-machineZ/2)
+
+front_window=rounded_rectangle(0,machineX-2*material_thickness-2,0,machineZ/2,.2)
+front_window=move(front_window,-(machineX-2*material_thickness-2)/2,-(machineZ/2)/2)
+mfront-=front_window
+
+mfront=tab_male(mfront,rod_distance,-machineZ/2,.85,180)
+mfront=tab_male(mfront,-rod_distance,-machineZ/2,.85,180)
+
+mfront_tfem=tab_female((machineX-material_thickness)/2,0,.2,90)
+mfront_tfem+=reflect_x(mfront_tfem)
+mfront_tfem+=move(mfront_tfem,0,machineZ/4)
+mfront_tfem+=reflect_y(mfront_tfem)
+mfront-=mfront_tfem
+
+mfront-=rod_align(rod_distance,-machineZ/2+.9,.5,0,True)
+mfront-=rod_align(-rod_distance,-machineZ/2+.9,.5,0,True)
+mfront-=circle(0,-machineZ/2+.9,.4375/2)
+
+mfront=move(mfront,0,machineY+2)
+
+##############
+# machine back
+##############
+mback=reflect_y(mfront)
+mback-=nema17(0,-machineY+2-.7) # Double-check
+
+###############
+# machine right
+###############
+mright=rectangle(0,machineY-2*material_thickness,0,machineZ)
+mright=move(mright,-(machineY-2*material_thickness)/2,0)
+mright=tab_male(mright,0,0,.7,180)
+mright=move(mright,0,-machineZ/2)
+mright=tab_male(mright,machineZ/2+material_thickness/2,0,.2,-90)
+mright=tab_male(mright,-machineZ/2-material_thickness/2,0,.2,90)
+
+window_right=rounded_rectangle(0,machineZ/2,0,machineZ/2,.2)
+window_right=move(window_right,-machineZ/8,-machineZ/4)
+
+mright-=window_right
+
+mright=tab_male(mright,machineZ/2+material_thickness/2,machineZ/3,.2,-90)
+mright=tab_male(mright,machineZ/2+material_thickness/2,-machineZ/3,.2,-90)
+
+mright=tab_male(mright,-machineZ/2-material_thickness/2,machineZ/3,.2,90)
+mright=tab_male(mright,-machineZ/2-material_thickness/2,-machineZ/3,.2,90)
+
+mright-=
+
+mright=rotate(mright,-90)
+mright=move(mright,machineY+2,0)
+
+##############
+# machine left
+##############
+mleft=reflect_x(mright)
+
+
+###################################################################
+
+cad.shapes =  color(mleft,'red'), color(mright,'red'), color(mback,'yellow'),color(mfront,'yellow'), color(mbottom,'teal'), color(fullbed,'green')
+
