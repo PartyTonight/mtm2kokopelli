@@ -1,6 +1,14 @@
 from koko.lib.shapes import *
 from math import asin,degrees,cos
 
+## WARNING ALL UNITS IN INCHES!
+
+##############
+# parts output
+##############
+# Use: assembled, all, bed, base, front, back, left, right
+output="assembled"
+
 ################
 # set parameters
 ################
@@ -21,7 +29,7 @@ Y axis is the front-back movement
 Z axis is the spindle vertical movement
 Those are measured from exterior to exterior sides
 """
-# adjust those
+# adjust these for machine resize
 bed_w=6.
 bed_h=4.
 bed_t=2.
@@ -30,8 +38,9 @@ machineX=bed_w+4
 machineY=bed_h+6
 machineZ=8.5
 
-#############################################################
-
+#############
+# MTM toolkit
+#############
 
 #
 # CUSTOM SHAPE SELF ALIGNING ROD
@@ -83,9 +92,9 @@ def nema17 (x0,y0,angle=0):
  m.shape=True
  return m
 
-###################
+#
 # MTM Snap male tab
-###################
+#
 '''
 Based on the snap.dxf file from http://mtm.cba.mit.edu/machines/mtm_snap-lock/index.html
 Ported to kokopelli by Francisco. Fab Academy 2013
@@ -183,8 +192,12 @@ c=rod_align(0,0,rod38dia,45,False)
 d=rod_align(0,1,rod12dia,0,True)
 rods=support3-c-d
 
+#############################
+# Machine design starts here!
+#############################
+
 #######################
-# BED
+# bed
 #######################
 #bed top
 bed_tabwtop=.2
@@ -223,8 +236,16 @@ bed_sidetop=move(bed_sidetop,0,bed_h/2.+.9)
 #bed bottom part
 bed_sidebottom=reflect_y(bed_sidetop)
 
-fullbed=bed_sidetop+bed_sidebottom+bed_left+bed_right+bed_top
-fullbed=move(fullbed,machineX+4,machineY+2)
+if output=="bed":
+ fullbed=bed_sidetop+bed_sidebottom+bed_left+bed_right+bed_top
+
+if output=="all":
+ fullbed=move(fullbed,machineX+4,machineY+2)
+
+if output=="assembled":
+ bed_top=extrusion(bed_top,-material_thickness/2,material_thickness/2)
+ fullbed=bed_top#bed_sidetop+bed_sidebottom+bed_left+bed_right+
+# fullbed=extrusion(fullbed,-material_thickness,0)
 
 
 ################
@@ -244,6 +265,10 @@ mbottom_taby+=reflect_x(mbottom_taby)
 mbottom_taby+=reflect_y(mbottom_taby)
 mbottom-=mbottom_taby
 
+if output=="assembled":
+ mbottom=extrusion(mbottom,-material_thickness,0)
+
+
 ###############
 # machine front
 ###############
@@ -260,7 +285,7 @@ mfront=tab_male(mfront,-rod_distance,-machineZ/2,.85,180)
 
 mfront_tfem=tab_female((machineX-material_thickness)/2,0,.2,90)
 mfront_tfem+=reflect_x(mfront_tfem)
-mfront_tfem+=move(mfront_tfem,0,machineZ/4)
+mfront_tfem+=move(mfront_tfem,0,machineZ/3)
 mfront_tfem+=reflect_y(mfront_tfem)
 mfront-=mfront_tfem
 
@@ -268,13 +293,21 @@ mfront-=rod_align(rod_distance,-machineZ/2+.9,.5,0,True)
 mfront-=rod_align(-rod_distance,-machineZ/2+.9,.5,0,True)
 mfront-=circle(0,-machineZ/2+.9,.4375/2)
 
-mfront=move(mfront,0,machineY+2)
+if output=="all":
+ mfront=move(mfront,0,machineY+2)
+
+if output=="assembled":
+ mfront=move(mfront,0,machineZ/2)
+ mfront=extrusion(mfront,-material_thickness,0)
+ mfront=rotate_x(mfront,90)
+ mfront=move(mfront,0,-machineY/2)
 
 ##############
 # machine back
 ##############
 mback=reflect_y(mfront)
 mback-=nema17(0,-machineY+2-.7) # Double-check
+
 
 ###############
 # machine right
@@ -283,32 +316,59 @@ mright=rectangle(0,machineY-2*material_thickness,0,machineZ)
 mright=move(mright,-(machineY-2*material_thickness)/2,0)
 mright=tab_male(mright,0,0,.7,180)
 mright=move(mright,0,-machineZ/2)
-mright=tab_male(mright,machineZ/2+material_thickness/2,0,.2,-90)
-mright=tab_male(mright,-machineZ/2-material_thickness/2,0,.2,90)
+mright=tab_male(mright,machineY/2-material_thickness,0,.2,-90)
+mright=tab_male(mright,-machineY/2+material_thickness,0,.2,90)
 
 window_right=rounded_rectangle(0,machineZ/2,0,machineZ/2,.2)
 window_right=move(window_right,-machineZ/8,-machineZ/4)
 
 mright-=window_right
 
-mright=tab_male(mright,machineZ/2+material_thickness/2,machineZ/3,.2,-90)
-mright=tab_male(mright,machineZ/2+material_thickness/2,-machineZ/3,.2,-90)
+mright=tab_male(mright,machineY/2-material_thickness,machineZ/3,.2,-90)
+mright=tab_male(mright,machineY/2-material_thickness,-machineZ/3,.2,-90)
 
-mright=tab_male(mright,-machineZ/2-material_thickness/2,machineZ/3,.2,90)
-mright=tab_male(mright,-machineZ/2-material_thickness/2,-machineZ/3,.2,90)
-
-mright-=
+mright=tab_male(mright,-machineY/2+material_thickness,machineZ/3,.2,90)
+mright=tab_male(mright,-machineY/2+material_thickness,-machineZ/3,.2,90)
 
 mright=rotate(mright,-90)
-mright=move(mright,machineY+2,0)
+if output=="all":
+ mright=move(mright,machineY+2,0)
+
+if output=="assembled":
+ mright=move(mright,machineZ/2,0)
+ mright=extrusion(mright,0,material_thickness)
+ mright=rotate_y(mright,90)
+ mright=move(mright,machineX/2,0)
+
+
 
 ##############
 # machine left
 ##############
 mleft=reflect_x(mright)
 
-
 ###################################################################
+###################################################################
+if output=="assembled":
+ cad.shapes =  color(mleft,'red'),color(mright,'red'),color(mfront,'yellow'), color(mback,'yellow'),color(mbottom,'teal'),color(fullbed,'green'),
 
-cad.shapes =  color(mleft,'red'), color(mright,'red'), color(mback,'yellow'),color(mfront,'yellow'), color(mbottom,'teal'), color(fullbed,'green')
+elif output=="all":
+ cad.shapes =  color(mleft,'red'), color(mright,'red'), color(mback,'yellow'),color(mfront,'yellow'), color(mbottom,'teal'), color(fullbed,'green')
 
+elif output=="bed":
+ cad.shapes =  color(fullbed,'green'),
+
+elif output=="base":
+ cad.shapes =  color(mbottom,'cyan'),
+
+elif output=="left":
+ cad.shapes =  color(mleft,'red'),
+
+elif output=="right":
+ cad.shapes =  color(mright,'red'),
+
+elif output=="front":
+ cad.shapes =  color(mfront,'yellow'),
+
+elif output=="back":
+ cad.shapes =  color(mback,'yellow'),
