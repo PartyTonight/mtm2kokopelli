@@ -217,8 +217,8 @@ bed_right=rectangle(0,bed_t,0,bed_h)
 bed_right=tab_male(bed_right,bed_t/2.,bed_h,bed_tabwtop,0) #top
 bed_right=tab_male(bed_right,bed_t/2.,0,bed_tabwtop,180) #bottom
 bed_right-=tab_female(material_thickness,bed_h/2.,bed_tabwside,90)
-bed_right=move(bed_right,bed_w/2.+.9,-bed_h/2.)
 
+bed_right=move(bed_right,0,-bed_h/2.)
 #bed left part
 bed_left=reflect_x(bed_right)
 
@@ -230,22 +230,44 @@ bed_sidetop-=tab_female(bed_w/2+material_thickness/2,bed_t/2.,bed_tabwtop,90) #l
 bed_sidetop-=rod_align(rod_distance,2*bed_t/3.,rod12dia,90,True) #left rod
 
 bed_sidetop+=reflect_x(bed_sidetop)
-bed_sidetop=move(bed_sidetop,0,bed_h/2.+.9)
 
 
 #bed bottom part
 bed_sidebottom=reflect_y(bed_sidetop)
 
+#arrange the parts
+
 if output=="bed":
+ bed_sidetop=move(bed_sidetop,0,bed_h/2.+.9)
+ bed_right=move(bed_right,bed_w/2.+.9,-bed_h/2.)
  fullbed=bed_sidetop+bed_sidebottom+bed_left+bed_right+bed_top
 
 if output=="all":
+ bed_sidetop=move(bed_sidetop,0,bed_h/2.+.9)
+ bed_right=move(bed_right,bed_w/2.+.9,-bed_h/2.)
  fullbed=move(fullbed,machineX+4,machineY+2)
 
 if output=="assembled":
  bed_top=extrusion(bed_top,-material_thickness/2,material_thickness/2)
- fullbed=bed_top#bed_sidetop+bed_sidebottom+bed_left+bed_right+
-# fullbed=extrusion(fullbed,-material_thickness,0)
+ bed_sidetop=extrusion(bed_sidetop,0,material_thickness)
+ bed_sidetop=rotate_x(bed_sidetop,-90)
+ bed_sidetop=move(bed_sidetop,0,bed_h/2,material_thickness)
+
+ bed_sidebottom=extrusion(bed_sidebottom,0,material_thickness)
+ bed_sidebottom=rotate_x(bed_sidebottom,90)
+ bed_sidebottom=move(bed_sidebottom,0,-bed_h/2,material_thickness)
+
+ bed_right=extrusion(bed_right,0,material_thickness)
+ bed_right=rotate_y(bed_right,-90)
+ bed_right=move(bed_right,bed_w/2,0,material_thickness)
+
+ bed_left=extrusion(bed_left,0,material_thickness)
+ bed_left=rotate_y(bed_left,90)
+ bed_left=move(bed_left,-bed_w/2,0,material_thickness)
+
+
+ fullbed=bed_top+bed_sidetop+bed_sidebottom+bed_right+bed_left
+ fullbed=move(fullbed,0,0,1.75)
 
 
 ################
@@ -291,7 +313,10 @@ mfront-=mfront_tfem
 
 mfront-=rod_align(rod_distance,-machineZ/2+.9,.5,0,True)
 mfront-=rod_align(-rod_distance,-machineZ/2+.9,.5,0,True)
-mfront-=circle(0,-machineZ/2+.9,.4375/2)
+mfront-=circle(0,-machineZ/2+.9,.4375/2) 
+
+mfront-=nema17(0,-machineZ/2+.9) 
+
 
 if output=="all":
  mfront=move(mfront,0,machineY+2)
@@ -302,11 +327,11 @@ if output=="assembled":
  mfront=rotate_x(mfront,90)
  mfront=move(mfront,0,-machineY/2)
 
+
 ##############
 # machine back
 ##############
 mback=reflect_y(mfront)
-mback-=nema17(0,-machineY+2-.7) # Double-check
 
 
 ###############
@@ -350,7 +375,7 @@ mleft=reflect_x(mright)
 ###################################################################
 ###################################################################
 if output=="assembled":
- cad.shapes =  color(mleft,'red'),color(mright,'red'),color(mfront,'yellow'), color(mback,'yellow'),color(mbottom,'teal'),color(fullbed,'green'),
+ cad.shapes =  color(mleft,'red'), color(mright,'red'), color(mback,'yellow'),color(mfront,'yellow'), color(mbottom,'teal'), color(fullbed,'green')
 
 elif output=="all":
  cad.shapes =  color(mleft,'red'), color(mright,'red'), color(mback,'yellow'),color(mfront,'yellow'), color(mbottom,'teal'), color(fullbed,'green')
